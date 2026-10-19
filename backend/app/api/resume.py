@@ -7,10 +7,30 @@ from app.models.user import User
 from app.models.resume import Resume
 from app.schemas.resume import ResumeUploadResponse, ResumePatch
 from app.utils.dependencies import get_current_user
-from app.utils.activity_sync import sync_resume_activity
-from app.agents.resume_agent import parse_resume
+from app.agents.resume_agent import extract_text, parse_resume
 
 router = APIRouter(prefix="/resumes", tags=["resumes"])
+
+
+@router.get("")
+async def list_resumes(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Resume).where(Resume.user_id == user.id).order_by(Resume.created_at.desc())
+    )
+    resumes = result.scalars().all()
+    return [
+        {
+            "resume_id": r.id,
+            "target_role": r.target_role,
+            "ats_score": r.ats_score,
+            "version": r.version,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in resumes
+    ]
 
 
 @router.post("", response_model=ResumeUploadResponse)
@@ -43,7 +63,13 @@ async def upload_resume(
     db.add(resume)
     await db.flush()
 
-    await sync_resume_activity(user.id, ats_score, db)
+    # Best-effort RAG indexing: must never fail the upload.
+    try:
+        from app.rag.store import index_resume
+
+        await index_resume(user.id, str(resume.id), extract_text(content, ext))
+    except Exception:
+        pass
 
     return ResumeUploadResponse(
         resume_id=str(resume.id),

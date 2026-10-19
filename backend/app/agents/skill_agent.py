@@ -132,7 +132,11 @@ def get_required_skills(role: str) -> list[str]:
     return []
 
 
-async def compute_skill_gap(parsed_resume: dict, target_role: str) -> dict:
+async def compute_skill_gap(
+    parsed_resume: dict,
+    target_role: str,
+    context: list[str] | None = None,
+) -> dict:
     resume_skills_raw = parsed_resume.get("skills", [])
     resume_skills = set(normalize_skill(s) for s in resume_skills_raw)
 
@@ -148,19 +152,95 @@ async def compute_skill_gap(parsed_resume: dict, target_role: str) -> dict:
     have = sorted(resume_skills & required_set)
     missing = sorted(required_set - resume_skills)
 
-    recommendations = []
-    for skill in missing:
-        recommendations.append({
-            "skill": skill,
-            "project_idea": f"Build a project demonstrating {skill} — e.g. a end-to-end pipeline or feature that showcases practical use of {skill} in a {target_role} context.",
-            "resource": f"https://roadmap.sh or search for '{skill} tutorial for {target_role}' on YouTube/courses",
-        })
+    recommendations = await _build_recommendations(missing, target_role, context)
 
     return {
         "have": have,
         "missing": missing,
         "recommendations": recommendations,
     }
+
+
+def _static_recommendation(skill: str, target_role: str) -> dict:
+    return {
+        "skill": skill,
+        "project_idea": f"Build a project demonstrating {skill} — e.g. a end-to-end pipeline or feature that showcases practical use of {skill} in a {target_role} context.",
+        "resource": f"https://roadmap.sh or search for '{skill} tutorial for {target_role}' on YouTube/courses",
+    }
+
+
+async def _build_recommendations(
+    missing: list[str],
+    target_role: str,
+    context: list[str] | None,
+) -> list[dict]:
+    """LLM-grounded recommendations when resume context is available.
+
+    Falls back to static templates on any failure or when no context given,
+    so existing behavior is preserved byte-for-byte in the default path.
+    """
+    if not missing:
+        return []
+    if not context:
+        return [_static_recommendation(s, target_role) for s in missing]
+    try:
+        grounded = await _llm_grounded_recommendations(missing, target_role, context)
+        if grounded:
+            return grounded
+    except Exception:
+        pass
+    return [_static_recommendation(s, target_role) for s in missing]
+
+
+async def _llm_grounded_recommendations(
+    missing: list[str],
+    target_role: str,
+    context: list[str],
+) -> list[dict]:
+    import httpx
+
+    context_block = "\n---\n".join(context)
+    prompt = f"""You help a job seeker close skill gaps for a "{target_role}" role.
+Their resume excerpts:
+{context_block[:3000]}
+
+Missing skills: {", ".join(missing)}
+
+For EACH missing skill, return a JSON array of objects with keys:
+- skill: the skill name (exactly as listed)
+- project_idea: one concrete project idea building on their background (1-2 sentences)
+- resource: one specific high-quality learning resource (name + URL if known)
+
+Return ONLY a valid JSON array, no markdown fences."""
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        resp = await client.post(
+            f"{settings.LLM_BASE_URL}/api/generate",
+            json={
+                "model": settings.LLM_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "format": "json",
+            },
+        )
+        resp.raise_for_status()
+        items = json.loads(resp.json()["response"])
+        if not isinstance(items, list):
+            return []
+        valid = []
+        for item in items:
+            if isinstance(item, dict) and item.get("skill") in missing:
+                valid.append({
+                    "skill": item["skill"],
+                    "project_idea": str(item.get("project_idea", "")),
+                    "resource": str(item.get("resource", "")),
+                })
+        # Fill any skills the LLM skipped with static templates.
+        covered = {v["skill"] for v in valid}
+        for skill in missing:
+            if skill not in covered:
+                valid.append(_static_recommendation(skill, target_role))
+        return valid
 
 
 async def _llm_extract_role_skills(role: str) -> list[str]:

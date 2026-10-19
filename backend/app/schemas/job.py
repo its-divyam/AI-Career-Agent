@@ -30,3 +30,18 @@ class JobDetail(BaseModel):
     location: str | None = None
     raw_description: str | None = None
     structured_requirements: dict | None = None
+
+
+class JobIngestRequest(BaseModel):
+    source: str = "manual"
+    external_id: str | None = None
+    title: str
+    company: str | None = None
+    location: str | None = None
+    raw_description: str | None = None
+
+
+class MatchRunRequest(BaseModel):
+    resume_id: str
+    job_id: str | None = None
+    top_n: int = 20

@@ -26,6 +26,11 @@ def _extract_text(content: bytes, file_ext: str) -> str:
         raise ValueError(f"Unsupported file extension: {file_ext}")
 
 
+def extract_text(content: bytes, file_ext: str) -> str:
+    """Public wrapper for raw text extraction (used by RAG indexing)."""
+    return _extract_text(content, file_ext)
+
+
 async def _llm_structure(raw_text: str) -> dict:
     try:
         import httpx

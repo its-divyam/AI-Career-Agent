@@ -9,6 +9,7 @@ class ApplicationCreate(BaseModel):
 class ApplicationPatch(BaseModel):
     draft_cover_letter: str | None = None
     draft_resume: dict | None = None
+    status: str | None = None
 
 
 class ApplicationResponse(BaseModel):

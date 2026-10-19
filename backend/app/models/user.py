@@ -17,5 +17,6 @@ class User(Base):
 
     resumes = relationship("Resume", back_populates="user", cascade="all, delete-orphan")
     user_skills = relationship("UserSkill", back_populates="user", cascade="all, delete-orphan")
+    skill_gap_results = relationship("SkillGapResult", back_populates="user", cascade="all, delete-orphan")
     job_matches = relationship("JobMatch", back_populates="user", cascade="all, delete-orphan")
     applications = relationship("Application", back_populates="user", cascade="all, delete-orphan")

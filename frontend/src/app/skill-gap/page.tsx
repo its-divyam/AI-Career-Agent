@@ -1,8 +1,12 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useEffect } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { useTaskPoll } from "@/lib/useTask";
+import { isLoggedIn } from "@/lib/auth";
 
 interface Recommendation {
   skill: string;
@@ -10,49 +14,42 @@ interface Recommendation {
   resource: string;
 }
 
-interface GapResult {
-  have: string[];
-  missing: string[];
-  recommendations: Recommendation[];
-}
-
 function SkillGapContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const resumeId = searchParams.get("resume_id");
   const role = searchParams.get("role");
 
-  const [result, setResult] = useState<GapResult | null>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { state: task, start } = useTaskPoll();
 
   useEffect(() => {
+    if (!isLoggedIn()) {
+      router.push("/login");
+      return;
+    }
     if (resumeId && role) {
-      computeGap();
+      start(() => api.tasks.skillGap(resumeId, role));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resumeId, role]);
 
-  async function computeGap() {
-    if (!resumeId || !role) return;
-    setLoading(true);
-    setError("");
-    try {
-      const res = await api.skillGap.compute(resumeId, role);
-      setResult(res);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to compute skill gap");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const result = task.status === "success"
+    ? {
+        have: (task.result.have ?? []) as string[],
+        missing: (task.result.missing ?? []) as string[],
+        recommendations: (task.result.recommendations ?? []) as Recommendation[],
+      }
+    : null;
+  const error = task.status === "error" ? task.error : "";
+  const loading = task.status === "pending" || task.status === "idle";
 
   if (!resumeId || !role) {
     return (
       <div className="max-w-2xl mx-auto text-center mt-16">
         <p className="text-gray-500">No resume selected. Please upload a resume first.</p>
-        <a href="/upload" className="text-indigo-600 hover:underline mt-2 inline-block">
+        <Link href="/upload" className="text-indigo-600 hover:underline mt-2 inline-block">
           Upload Resume
-        </a>
+        </Link>
       </div>
     );
   }
@@ -138,18 +135,18 @@ function SkillGapContent() {
           )}
 
           <div className="flex gap-4">
-            <a
+            <Link
               href="/upload"
               className="border border-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-100"
             >
               ← Upload New Resume
-            </a>
-            <a
+            </Link>
+            <Link
               href="/dashboard"
               className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
             >
               Go to Dashboard →
-            </a>
+            </Link>
           </div>
         </div>
       )}

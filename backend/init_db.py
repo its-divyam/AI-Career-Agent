@@ -6,7 +6,7 @@ import os
 sys.path.insert(0, os.path.dirname(__file__))
 
 from app.database import engine, Base
-from app.models import User, Resume, Skill, UserSkill, SkillGapResult, Job, JobMatch, Application
+from app.models import Resume, Skill, UserSkill, SkillGapResult, Job, JobMatch, Application, User
 
 
 async def init_db():

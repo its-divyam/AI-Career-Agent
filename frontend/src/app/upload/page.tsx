@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDropzone } from "react-dropzone";
 import { api } from "@/lib/api";
@@ -20,6 +20,12 @@ export default function UploadPage() {
   const [result, setResult] = useState<UploadResult | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isLoggedIn()) {
+      router.push("/login");
+    }
+  }, [router]);
 
   const onDrop = useCallback((accepted: File[]) => {
     if (accepted.length > 0) {
@@ -41,12 +47,6 @@ export default function UploadPage() {
   async function handleUpload(e: React.FormEvent) {
     e.preventDefault();
     if (!file || !targetRole) return;
-
-    if (!isLoggedIn()) {
-      setError("Please login first");
-      router.push("/login");
-      return;
-    }
 
     setLoading(true);
     setError("");

@@ -1,4 +1,4 @@
-# AI Career Agent — Project Overview
+# Skillgraph — Project Overview
 
 ## 1. Problem statement
 

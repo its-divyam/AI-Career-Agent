@@ -4,7 +4,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.user import User
-from app.models.profile import UserProfile
 from app.schemas.auth import AuthSignup, AuthLogin, AuthResponse
 from app.utils.auth import hash_password, verify_password, create_access_token
 
@@ -21,12 +20,8 @@ async def signup(body: AuthSignup, db: AsyncSession = Depends(get_db)):
     db.add(user)
     await db.flush()
 
-    profile = UserProfile(user_id=user.id, display_name=body.email.split("@")[0])
-    db.add(profile)
-    await db.flush()
-
     token = create_access_token(str(user.id))
-    return AuthResponse(user_id=str(user.id), access_token=token)
+    return AuthResponse(user_id=str(user.id), email=user.email, access_token=token)
 
 
 @router.post("/login", response_model=AuthResponse)
@@ -37,4 +32,4 @@ async def login(body: AuthLogin, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     token = create_access_token(str(user.id))
-    return AuthResponse(user_id=str(user.id), access_token=token)
+    return AuthResponse(user_id=str(user.id), email=user.email, access_token=token)

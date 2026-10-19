@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { setToken } from "@/lib/auth";
@@ -24,7 +26,7 @@ export default function RegisterPage() {
     try {
       const res = await api.auth.signup(email, password);
       setToken(res.access_token);
-      router.push("/upload");
+      router.push("/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -33,8 +35,12 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="max-w-md mx-auto mt-16">
-      <h1 className="text-2xl font-bold mb-6 text-center">Create Account</h1>
+    <div className="max-w-md mx-auto mt-12">
+      <div className="flex flex-col items-center mb-6">
+        <Image src="/logo.png" alt="Skillgraph" width={56} height={56} className="rounded-xl mb-3" />
+        <h1 className="text-2xl font-bold text-indigo-900">Create your account</h1>
+        <p className="text-sm text-gray-500 mt-1">Start building your skill graph</p>
+      </div>
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-sm border space-y-4">
         {error && <p className="text-red-600 text-sm">{error}</p>}
         <div>
@@ -71,15 +77,15 @@ export default function RegisterPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50"
+          className="w-full bg-indigo-900 text-white py-2 rounded-lg font-medium hover:bg-indigo-800 disabled:opacity-50"
         >
           {loading ? "Creating account..." : "Register"}
         </button>
         <p className="text-sm text-center text-gray-500">
           Already have an account?{" "}
-          <a href="/login" className="text-indigo-600 hover:underline">
+          <Link href="/login" className="text-indigo-600 hover:underline">
             Login
-          </a>
+          </Link>
         </p>
       </form>
     </div>

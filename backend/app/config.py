@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "AI Career Agent"
+    PROJECT_NAME: str = "Skillgraph"
     API_V1_PREFIX: str = "/api/v1"
 
     DATABASE_URL: str = "sqlite+aiosqlite:///./career_agent.db"
@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     CHROMA_PERSIST_DIR: str = "./data/chroma"
+
+    EMBED_MODEL: str = "nomic-embed-text"
+    RAG_TOP_K: int = 4
 
     MAX_UPLOAD_SIZE_MB: int = 10
 
